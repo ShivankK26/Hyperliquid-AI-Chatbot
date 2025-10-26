@@ -88,6 +88,13 @@ export interface WalletResponse {
   };
   profile: TradingProfile;
   strategies: Strategy[];
+  comprehensiveData?: {
+    portfolio: any;
+    fees: any;
+    openOrders: any[];
+    frontendOrders: any[];
+    timestamp: string;
+  };
 }
 
 export interface ProfileData {

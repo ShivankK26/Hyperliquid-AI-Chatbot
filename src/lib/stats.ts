@@ -1,10 +1,14 @@
 import { Fill, Session, TradingStats, Strategy } from '@/types';
 
 export function groupSessions(fills: Fill[]): Session[] {
+  console.log(`🔄 Grouping ${fills.length} fills into sessions`);
+  
   if (fills.length === 0) return [];
 
   // Sort fills by timestamp
   const sortedFills = [...fills].sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+  
+  console.log(`📊 Sample markets from fills:`, [...new Set(sortedFills.slice(0, 10).map(f => f.market))]);
   
   const sessions: Session[] = [];
   const sessionMap = new Map<string, Session>();
@@ -67,6 +71,8 @@ export function groupSessions(fills: Fill[]): Session[] {
 }
 
 export function computeStats(sessions: Session[]): TradingStats {
+  console.log(`📊 Computing stats for ${sessions.length} sessions`);
+  
   if (sessions.length === 0) {
     return {
       top_markets: [],
@@ -83,10 +89,15 @@ export function computeStats(sessions: Session[]): TradingStats {
   sessions.forEach(session => {
     marketCounts.set(session.market, (marketCounts.get(session.market) || 0) + 1);
   });
+  
+  console.log(`📈 Market counts:`, Object.fromEntries(marketCounts));
+  
   const top_markets = Array.from(marketCounts.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([market]) => market);
+    
+  console.log(`🏆 Top markets: ${top_markets.join(', ')}`);
 
   // Median position size
   const positionSizes = sessions.map(s => s.position_size_usd).sort((a, b) => a - b);

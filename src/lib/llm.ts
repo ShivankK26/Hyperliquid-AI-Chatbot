@@ -91,13 +91,22 @@ export async function generateTradingProfile(
   sessions: any[]
 ): Promise<{ summary: string; strategies: Array<{ name: string; reason: string }> }> {
   try {
+    // Limit sessions to prevent context overflow
+    const limitedSessions = sessions.slice(0, 3).map(session => ({
+      market: session.market,
+      duration_min: session.duration_min,
+      position_size_usd: session.position_size_usd,
+      pnl_usd: session.pnl_usd,
+      leverage: session.leverage
+    }));
+
     const systemPrompt = `You are an expert trading analyst. Based on the provided trading statistics and session data, generate a concise trading profile summary and identify trading strategies.
 
 Trading Statistics:
 ${JSON.stringify(stats, null, 2)}
 
-Session Data (first 5 sessions):
-${JSON.stringify(sessions.slice(0, 5), null, 2)}
+Session Data (sample):
+${JSON.stringify(limitedSessions, null, 2)}
 
 Generate:
 1. A 1-2 sentence summary of the trader's style and behavior

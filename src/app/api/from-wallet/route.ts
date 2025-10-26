@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFillsFromDatabase, processFillsForUser, saveFillsToDatabase } from '@/lib/hyperliquid';
+import { getFillsFromDatabase, processFillsForUser, saveFillsToDatabase, getComprehensiveUserDataFromHyperliquidAPI } from '@/lib/hyperliquid';
 import { groupSessions, computeStats, detectStrategies, buildProfileText } from '@/lib/stats';
 import { generateTradingProfile } from '@/lib/llm';
 import { supabase } from '@/lib/supabase';
@@ -25,6 +25,21 @@ export async function POST(request: NextRequest) {
         { error: 'No trading data found for this address' },
         { status: 404 }
       );
+    }
+
+    // Get comprehensive user data from all Hyperliquid APIs
+    let comprehensiveData = null;
+    try {
+      comprehensiveData = await getComprehensiveUserDataFromHyperliquidAPI(hl_address);
+      console.log('📊 Comprehensive data fetched:', {
+        portfolio: comprehensiveData.portfolio?.marginSummary?.accountValue,
+        fees: comprehensiveData.fees?.userCrossRate,
+        openOrders: comprehensiveData.openOrders?.length,
+        frontendOrders: comprehensiveData.frontendOrders?.length
+      });
+    } catch (error) {
+      console.error('Error fetching comprehensive data:', error);
+      // Continue without comprehensive data
     }
 
     // Save fills to database for future reference
@@ -80,7 +95,8 @@ export async function POST(request: NextRequest) {
       address: hl_address,
       window,
       profile,
-      strategies
+      strategies,
+      comprehensiveData
     };
 
     return NextResponse.json(response);

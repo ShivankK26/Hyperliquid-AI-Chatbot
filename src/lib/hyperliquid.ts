@@ -29,7 +29,7 @@ function convertHyperliquidFill(hlFill: HyperliquidFill, userId: string, hlAddre
 }
 
 // Fetch fills from Hyperliquid API
-export async function getFillsFromHyperliquidAPI(address: string, lookbackDays: number = 30): Promise<Fill[]> {
+export async function getFillsFromHyperliquidAPI(address: string, lookbackDays: number = 60): Promise<Fill[]> {
   try {
     const requestBody: HyperliquidUserFillsRequest = {
       type: 'userFills',
@@ -50,13 +50,19 @@ export async function getFillsFromHyperliquidAPI(address: string, lookbackDays: 
     }
 
     const hlFills: HyperliquidFill[] = await response.json();
+    console.log(`Raw API response: ${hlFills.length} fills`);
     
     // Filter fills by date range
     const cutoffTime = Date.now() - (lookbackDays * 24 * 60 * 60 * 1000);
     const recentFills = hlFills.filter(fill => fill.time >= cutoffTime);
+    console.log(`After date filtering: ${recentFills.length} fills (cutoff: ${new Date(cutoffTime).toISOString()})`);
+    
+    // If no recent fills, use all fills for analysis
+    const fillsToUse = recentFills.length > 0 ? recentFills : hlFills;
+    console.log(`Using ${fillsToUse.length} fills for analysis`);
     
     // Convert to our format
-    return recentFills.map(fill => convertHyperliquidFill(fill, '', address));
+    return fillsToUse.map(fill => convertHyperliquidFill(fill, '', address));
     
   } catch (error) {
     console.error('Error fetching fills from Hyperliquid API:', error);
@@ -158,5 +164,202 @@ export async function getMarketMids(): Promise<Record<string, string>> {
   } catch (error) {
     console.error('Error fetching market mids:', error);
     return {};
+  }
+}
+
+// Get portfolio data from Hyperliquid API (clearinghouseState)
+export async function getPortfolioFromHyperliquidAPI(address: string): Promise<any> {
+  try {
+    const response = await fetch(HYPERLIQUID_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'clearinghouseState',
+        user: address
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Hyperliquid API error: ${response.status} ${response.statusText}`);
+    }
+
+    const portfolioData = await response.json();
+    console.log(`Portfolio API response: Account Value: $${portfolioData.marginSummary.accountValue}`);
+    
+    return portfolioData;
+  } catch (error) {
+    console.error('Error fetching portfolio from Hyperliquid API:', error);
+    throw error;
+  }
+}
+
+// Get fees data from Hyperliquid API
+export async function getFeesFromHyperliquidAPI(address: string): Promise<any> {
+  try {
+    const response = await fetch(HYPERLIQUID_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'userFees',
+        user: address
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Hyperliquid API error: ${response.status} ${response.statusText}`);
+    }
+
+    const feesData = await response.json();
+    console.log(`Fees API response: Cross Rate: ${feesData.userCrossRate}, Add Rate: ${feesData.userAddRate}`);
+    
+    return feesData;
+  } catch (error) {
+    console.error('Error fetching fees from Hyperliquid API:', error);
+    throw error;
+  }
+}
+
+// Get open orders from Hyperliquid API
+export async function getOpenOrdersFromHyperliquidAPI(address: string): Promise<any> {
+  try {
+    const response = await fetch(HYPERLIQUID_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'openOrders',
+        user: address
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Hyperliquid API error: ${response.status} ${response.statusText}`);
+    }
+
+    const ordersData = await response.json();
+    console.log(`Open Orders API response: ${ordersData.length} orders`);
+    
+    return ordersData;
+  } catch (error) {
+    console.error('Error fetching open orders from Hyperliquid API:', error);
+    throw error;
+  }
+}
+
+// Get frontend open orders from Hyperliquid API
+export async function getFrontendOpenOrdersFromHyperliquidAPI(address: string): Promise<any> {
+  try {
+    const response = await fetch(HYPERLIQUID_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'frontendOpenOrders',
+        user: address
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Hyperliquid API error: ${response.status} ${response.statusText}`);
+    }
+
+    const ordersData = await response.json();
+    console.log(`Frontend Open Orders API response: ${ordersData.length} orders`);
+    
+    return ordersData;
+  } catch (error) {
+    console.error('Error fetching frontend open orders from Hyperliquid API:', error);
+    throw error;
+  }
+}
+
+// Get fills by time from Hyperliquid API
+export async function getFillsByTimeFromHyperliquidAPI(address: string, startTime: number, endTime: number): Promise<any> {
+  try {
+    const response = await fetch(HYPERLIQUID_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'userFills',
+        user: address,
+        startTime: startTime,
+        endTime: endTime
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Hyperliquid API error: ${response.status} ${response.statusText}`);
+    }
+
+    const fillsData = await response.json();
+    console.log(`Fills by time API response: ${fillsData.length} fills`);
+    
+    return fillsData;
+  } catch (error) {
+    console.error('Error fetching fills by time from Hyperliquid API:', error);
+    throw error;
+  }
+}
+
+// Get order status by oid or cloid from Hyperliquid API
+export async function getOrderStatusFromHyperliquidAPI(oid?: number, cloid?: string): Promise<any> {
+  try {
+    const response = await fetch(HYPERLIQUID_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'orderStatus',
+        oid: oid,
+        cloid: cloid
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Hyperliquid API error: ${response.status} ${response.statusText}`);
+    }
+
+    const orderData = await response.json();
+    console.log(`Order Status API response: ${JSON.stringify(orderData)}`);
+    
+    return orderData;
+  } catch (error) {
+    console.error('Error fetching order status from Hyperliquid API:', error);
+    throw error;
+  }
+}
+
+// Get comprehensive user data from all APIs
+export async function getComprehensiveUserDataFromHyperliquidAPI(address: string): Promise<any> {
+  try {
+    console.log(`🔍 Fetching comprehensive data for ${address}`);
+    
+    // Fetch all data in parallel
+    const [portfolioData, feesData, openOrders, frontendOrders] = await Promise.all([
+      getPortfolioFromHyperliquidAPI(address),
+      getFeesFromHyperliquidAPI(address),
+      getOpenOrdersFromHyperliquidAPI(address),
+      getFrontendOpenOrdersFromHyperliquidAPI(address)
+    ]);
+
+    return {
+      portfolio: portfolioData,
+      fees: feesData,
+      openOrders: openOrders,
+      frontendOrders: frontendOrders,
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error fetching comprehensive user data:', error);
+    throw error;
   }
 }
